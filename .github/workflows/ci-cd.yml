@@ -1,0 +1,43 @@
+name: CI/CD Pipeline - AWS Docker & Terraform
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    name: Build Docker & Test Local
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Construir imagen Docker
+        run: |
+          docker build -t mi-app-bash .
+
+      - name: Probar ejecucion del contenedor
+        run: |
+          docker run -d -p 8080:8080 --name test-container mi-app-bash
+          sleep 2
+          curl -f http://localhost:8080 || exit 1
+          docker stop test-container
+
+  terraform-check:
+    name: Validar Infraestructura (Terraform AWS)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+
+      - name: Configurar Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init & Validate
+        run: |
+          terraform init
+          terraform validate
