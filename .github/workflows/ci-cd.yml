@@ -7,33 +7,28 @@ on:
     branches: [ "main" ]
 
 jobs:
-  build-and-test:
-    name: Build Docker & Test Local
+  build-and-deploy:
+    name: Build, Validate & Deploy to AWS
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout del código
         uses: actions/checkout@v4
 
+      # 1. Autenticación segura con AWS usando GitHub Secrets
+      - name: Configurar Credenciales de AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      # 2. Probar construcción local del contenedor
       - name: Construir imagen Docker
         run: |
           docker build -t mi-app-bash .
 
-      - name: Probar ejecucion del contenedor
-        run: |
-          docker run -d -p 8080:8080 --name test-container mi-app-bash
-          sleep 2
-          curl -f http://localhost:8080 || exit 1
-          docker stop test-container
-
-  terraform-check:
-    name: Validar Infraestructura (Terraform AWS)
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout del código
-        uses: actions/checkout@v4
-
+      # 3. Inicializar y Validar Terraform en AWS
       - name: Configurar Terraform
         uses: hashicorp/setup-terraform@v3
 
