@@ -12,6 +12,10 @@ terraform {
 #export AWS_SECRET_ACCESS_KEY="TU_SECRET_KEY_DE_IAM"
 #export AWS_REGION="us-east-1"
 
+#terraform init
+#terraform plan
+#terraform apply -auto-approve
+
 # El proveedor de AWS detecta automáticamente las variables de entorno:
 # - AWS_ACCESS_KEY_ID
 # - AWS_SECRET_ACCESS_KEY
