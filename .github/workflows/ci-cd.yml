@@ -1,38 +1,52 @@
+# .github/workflows/ci-cd.yml
 name: CI/CD Pipeline - AWS Docker & Terraform
 
 on:
   push:
     branches: [ "main" ]
-  pull_request:
-    branches: [ "main" ]
 
 jobs:
   build-and-deploy:
-    name: Build, Validate & Deploy to AWS
     runs-on: ubuntu-latest
-
+    
     steps:
-      - name: Checkout del código
+      - name: Checkout código
         uses: actions/checkout@v4
 
-      # 1. Autenticación segura con AWS usando GitHub Secrets
-      - name: Configurar Credenciales de AWS
+      - name: Configurar Credenciales AWS
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: us-east-1
 
-      # 2. Probar construcción local del contenedor
-      - name: Construir imagen Docker
+      - name: Build y test Docker local
         run: |
           docker build -t mi-app-bash .
+          docker run -d -p 8080:8080 --name test mi-app-bash
+          sleep 2
+          curl http://localhost:8080
+          docker stop test
+          docker rm test
 
-      # 3. Inicializar y Validar Terraform en AWS
-      - name: Configurar Terraform
+      - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init & Validate
         run: |
           terraform init
           terraform validate
+
+      - name: Login a ECR
+        run: |
+          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com
+
+      - name: Build, Tag y Push a ECR
+        run: |
+          ECR_URL=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.us-east-1.amazonaws.com/bash-app-repo
+          docker build -t $ECR_URL:latest .
+          docker push $ECR_URL:latest
+
+      - name: Forzar despliegue en ECS
+        run: |
+          aws ecs update-service --cluster bash-app-cluster --service bash-app-service --force-new-deployment
